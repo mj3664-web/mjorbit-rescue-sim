@@ -1,0 +1,95 @@
+<mujoco model="astronaut_rescue">
+  <compiler angle="radian"/>
+  <option timestep="0.01" gravity="0 0 0" integrator="implicitfast">
+    <flag contact="disable"/>
+  </option>
+
+  <default>
+    <geom contype="0" conaffinity="0"/>
+  </default>
+
+  <worldbody>
+    <!-- The spacecraft is the mjorbit chief.  The port is a non-dynamic marker
+         at the local-world origin. -->
+    <site name="spacecraft_port" pos="0 0 0" size="0.15" rgba="0.2 0.8 1 1"/>
+
+    <body name="rescuer" pos="0 0 0">
+      <freejoint name="rescuer_free"/>
+      <geom name="rescuer_body" type="box" size="0.30 0.24 0.20" mass="40"
+            rgba="0.22 0.55 0.95 1"/>
+      <geom name="capture_boom" type="capsule" fromto="0.30 0 0 0.48 0 0"
+            size="0.035" mass="1" rgba="0.95 0.75 0.15 1"/>
+      <site name="capture_probe" pos="0.50 0 0" size="0.06" rgba="1 0.8 0.1 1"/>
+      <site name="rescuer_imu" pos="0 0 0"/>
+    </body>
+
+    <body name="astronaut" pos="12 2 1">
+      <freejoint name="astronaut_free"/>
+      <geom name="suit_torso" type="capsule" fromto="-0.32 0 0 0.32 0 0"
+            size="0.28" mass="140" rgba="0.92 0.94 0.98 1"/>
+      <geom name="life_support" type="box" pos="-0.40 0 0" size="0.14 0.25 0.28"
+            mass="35" rgba="0.72 0.76 0.82 1"/>
+      <geom name="helmet" type="sphere" pos="0.48 0 0" size="0.22" mass="5"
+            rgba="0.75 0.88 1 0.7"/>
+      <site name="rescue_handle" pos="-0.50 0 0" size="0.06" rgba="1 0.35 0.15 1"/>
+      <site name="astronaut_imu" pos="0 0 0"/>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <!-- Translational motors act in chief-centered inertial world axes. -->
+    <motor name="force_x" joint="rescuer_free" gear="1 0 0 0 0 0"
+           ctrlrange="-5 5"/>
+    <motor name="force_y" joint="rescuer_free" gear="0 1 0 0 0 0"
+           ctrlrange="-5 5"/>
+    <motor name="force_z" joint="rescuer_free" gear="0 0 1 0 0 0"
+           ctrlrange="-5 5"/>
+    <!-- Rotational free-joint motor axes are body-frame axes. -->
+    <motor name="torque_x" joint="rescuer_free" gear="0 0 0 1 0 0"
+           ctrlrange="-0.5 0.5"/>
+    <motor name="torque_y" joint="rescuer_free" gear="0 0 0 0 1 0"
+           ctrlrange="-0.5 0.5"/>
+    <motor name="torque_z" joint="rescuer_free" gear="0 0 0 0 0 1"
+           ctrlrange="-0.5 0.5"/>
+  </actuator>
+
+  <equality>
+    <!-- Disabled during approach.  On a valid capture command the simulator
+         transfers the state to an identical model with this compliant weld
+         enabled.  At the nominal grasp the astronaut center is 1 m in front
+         of the rescuer center, aligning probe and backpack handle. -->
+    <weld name="capture_weld" body1="rescuer" body2="astronaut"
+          relpose="1 0 0 1 0 0 0" active="false" solref="0.25 1"/>
+  </equality>
+
+  <sensor>
+    <framepos name="rescue_position_world_m" objtype="body" objname="rescuer"
+              noise="0.002"/>
+    <framelinvel name="rescue_velocity_world_m_s" objtype="body" objname="rescuer"
+                 noise="0.0005"/>
+    <framequat name="rescue_attitude_wxyz" objtype="body" objname="rescuer"
+               noise="0.0002"/>
+    <gyro name="rescue_angular_velocity_body_rad_s" site="rescuer_imu"
+          noise="0.0002"/>
+
+    <framepos name="astronaut_position_world_m" objtype="body" objname="astronaut"
+              noise="0.002"/>
+    <framelinvel name="astronaut_velocity_world_m_s" objtype="body" objname="astronaut"
+                 noise="0.0005"/>
+    <framequat name="astronaut_attitude_wxyz" objtype="body" objname="astronaut"
+               noise="0.0002"/>
+    <gyro name="astronaut_angular_velocity_body_rad_s" site="astronaut_imu"
+          noise="0.0002"/>
+
+    <framepos name="capture_probe_position_world_m" objtype="site"
+              objname="capture_probe" noise="0.002"/>
+    <framepos name="rescue_handle_position_world_m" objtype="site"
+              objname="rescue_handle" noise="0.002"/>
+    <framepos name="spacecraft_port_position_world_m" objtype="site"
+              objname="spacecraft_port" noise="0.001"/>
+  </sensor>
+
+  <mjorbit use_j2="false" use_drag="false" use_srp="false" use_magnetic="false"
+           use_gravity_gradient="true"/>
+</mujoco>
+

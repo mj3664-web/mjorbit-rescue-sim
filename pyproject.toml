@@ -1,0 +1,29 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mjorbit-rescue-sim"
+version = "0.1.0"
+description = "Action/sensor simulator for an orbital astronaut rescue mission"
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+  "numpy>=1.26,<2",
+  "mjorbit @ git+https://github.com/johnzhang3/mjorbit.git@a09090671fe6299b1085d235623e4b2d00b4e675",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[project.scripts]
+rescue-demo = "rescue_sim.demo:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["rescue_sim"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
