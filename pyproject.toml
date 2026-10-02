@@ -11,6 +11,7 @@ requires-python = ">=3.11,<3.13"
 dependencies = [
   "numpy>=1.26,<2",
   "mjorbit @ git+https://github.com/johnzhang3/mjorbit.git@a09090671fe6299b1085d235623e4b2d00b4e675",
+  "viser>=0.2.0",
 ]
 
 [project.optional-dependencies]
@@ -19,6 +20,7 @@ test = ["pytest>=8"]
 [project.scripts]
 rescue-demo = "rescue_sim.demo:main"
 rescue-view = "rescue_sim.visualize:main"
+rescue-control = "rescue_sim.manual:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["rescue_sim"]

@@ -109,6 +109,35 @@ rescue-view --viewer-speed 2
 On Windows, launch it from Ubuntu under WSLg. If GLFW is missing, install the
 runtime package with `sudo apt install libglfw3`.
 
+## Send actions manually and read sensors
+
+Launch the browser-based manual control station:
+
+```bash
+rescue-control
+```
+
+Open `http://localhost:8080` if it does not open automatically. The control
+station provides:
+
+- normalized `Fx`, `Fy`, `Fz`, `Tx`, `Ty`, and `Tz` action sliders;
+- a one-shot capture request button;
+- single-step, continuous-run, speed, and reset controls;
+- an interactive 3D mission view;
+- a compact live navigation dashboard; and
+- the complete sensor packet as JSON after every step.
+
+The viewer starts paused. Set the six action values and click **Apply action for
+one step** to send exactly one action and receive the resulting sensor values.
+The capture command is momentary: click **Request capture once** before stepping.
+Enable **Run continuously** to apply the current action at every control period.
+
+Use a different port if 8080 is occupied:
+
+```bash
+rescue-control --port 8090
+```
+
 ## Run tests
 
 ```bash

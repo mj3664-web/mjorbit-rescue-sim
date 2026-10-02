@@ -149,6 +149,17 @@ class RescueSimulator:
             "mission_phase": self._phase.value,
         }
 
+    @property
+    def visualization_handles(self) -> tuple[MjoModel, Any]:
+        """Return live model/data handles for read-only visualization.
+
+        These handles change when capture switches to the welded model.  A
+        visualization client should request them again on every refresh and
+        must not mutate either object.
+        """
+
+        return self._model, self._data
+
     def reset(
         self,
         *,
