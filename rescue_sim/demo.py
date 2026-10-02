@@ -32,6 +32,11 @@ def main(*, viewer_default: bool = False) -> None:
         help="visualized simulation speed relative to wall time (default: 4)",
     )
     parser.add_argument(
+        "--viewer-config",
+        default=None,
+        help="optional TOML viewer configuration (shared with rescue-control)",
+    )
+    parser.add_argument(
         "--json-first-packet",
         action="store_true",
         help="print the complete initial sensor packet as JSON",
@@ -57,9 +62,11 @@ def main(*, viewer_default: bool = False) -> None:
     viewer_context: Any = nullcontext(None)
     if args.viewer:
         # Imported lazily so headless users do not initialize GLFW.
-        from rescue_sim.viewer import RescueViewer
+        from rescue_sim.viewer import RescueViewer, ViewerConfig
 
-        viewer_context = RescueViewer(simulator)
+        viewer_context = RescueViewer(
+            simulator, ViewerConfig.from_toml(args.viewer_config)
+        )
         print("Opening MuJoCo viewer. Close the window or press Ctrl+C to stop.")
 
     next_log = 0.0

@@ -1,0 +1,11 @@
+[camera]
+lookat_m = [5.5, 1.0, 0.5]
+distance_m = 17.0
+azimuth_deg = 135.0
+elevation_deg = -22.0
+
+[display]
+show_left_ui = false
+show_right_ui = true
+show_axes = true
+show_markers = true

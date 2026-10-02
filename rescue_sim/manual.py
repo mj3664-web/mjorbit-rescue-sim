@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Mapping
 
 import numpy as np
@@ -17,6 +17,7 @@ from rescue_sim.simulator import (
     RescueSimulator,
     sensor_packet_to_serializable,
 )
+from rescue_sim.viewer import ViewerConfig
 
 
 @dataclass(frozen=True)
@@ -27,6 +28,7 @@ class ManualViewerConfig:
     port: int = 8080
     auto_run: bool = False
     duration_s: float | None = None
+    viewer: ViewerConfig = field(default_factory=ViewerConfig.from_toml)
 
 
 def sensor_summary_markdown(
@@ -69,8 +71,10 @@ class ManualRescueApp:
             label="mjorbit astronaut rescue",
         )
         self.server.scene.set_up_direction("+z")
-        self.server.initial_camera.position = (14.0, -16.0, 10.0)
-        self.server.initial_camera.look_at = (5.5, 1.0, 0.5)
+        self.server.initial_camera.position = (
+            self.config.viewer.browser_camera_position_m()
+        )
+        self.server.initial_camera.look_at = self.config.viewer.camera_lookat_m
 
         model, _ = self.simulator.visualization_handles
         self.scene = MuJoCoScene(self.server, model, root_path="/mission/bodies")
@@ -107,6 +111,8 @@ class ManualRescueApp:
             thickness=3.0,
             thickness_units="screen",
         )
+        for marker in (self._probe, self._handle, self._port, self._capture_line):
+            marker.visible = self.config.viewer.show_markers
         axis_points = np.stack(
             [np.zeros((3, 3)), 1.5 * np.eye(3)], axis=1
         )
@@ -118,13 +124,14 @@ class ManualRescueApp:
             ],
             dtype=np.uint8,
         )
-        self.server.scene.add_line_segments(
+        axes = self.server.scene.add_line_segments(
             "/mission/lvlh_axes",
             points=axis_points,
             colors=axis_colors,
             thickness=3.0,
             thickness_units="screen",
         )
+        axes.visible = self.config.viewer.show_axes
 
         self._setup_gui()
         self._render()
@@ -279,6 +286,11 @@ def main() -> None:
     parser.add_argument("--auto-run", action="store_true")
     parser.add_argument("--duration", type=float, default=None)
     parser.add_argument("--noisy-sensors", action="store_true")
+    parser.add_argument(
+        "--viewer-config",
+        default=None,
+        help="optional TOML viewer configuration (shared with rescue-view)",
+    )
     args = parser.parse_args()
     if args.duration is not None and args.duration <= 0.0:
         parser.error("--duration must be positive")
@@ -293,6 +305,7 @@ def main() -> None:
             port=args.port,
             auto_run=args.auto_run,
             duration_s=args.duration,
+            viewer=ViewerConfig.from_toml(args.viewer_config),
         ),
     )
     app.run()

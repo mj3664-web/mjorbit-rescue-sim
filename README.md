@@ -132,6 +132,16 @@ one step** to send exactly one action and receive the resulting sensor values.
 The capture command is momentary: click **Request capture once** before stepping.
 Enable **Run continuously** to apply the current action at every control period.
 
+Both `rescue-view` and `rescue-control` load the same bundled configuration at
+`rescue_sim/config/viewer.toml`. It defines the camera target, distance,
+azimuth, elevation, UI panels, axes, and mission-marker visibility. To use an
+edited copy without changing the package, pass it to either command:
+
+```bash
+rescue-view --viewer-config my-viewer.toml
+rescue-control --viewer-config my-viewer.toml
+```
+
 Use a different port if 8080 is occupied:
 
 ```bash

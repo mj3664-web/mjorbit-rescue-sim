@@ -7,6 +7,7 @@ from pathlib import Path
 from types import TracebackType
 from typing import TYPE_CHECKING, Any
 from xml.etree import ElementTree
+import tomllib
 
 import mujoco
 import mujoco.viewer
@@ -26,6 +27,52 @@ class ViewerConfig:
     camera_elevation_deg: float = -22.0
     show_left_ui: bool = False
     show_right_ui: bool = True
+    show_axes: bool = True
+    show_markers: bool = True
+
+    @classmethod
+    def from_toml(cls, path: str | Path | None = None) -> ViewerConfig:
+        """Load the shared native/manual viewer configuration."""
+
+        config_path = (
+            Path(path)
+            if path is not None
+            else Path(__file__).with_name("config") / "viewer.toml"
+        )
+        with config_path.open("rb") as file:
+            raw = tomllib.load(file)
+        camera = raw.get("camera", {})
+        display = raw.get("display", {})
+        lookat = tuple(float(value) for value in camera.get("lookat_m", (5.5, 1.0, 0.5)))
+        if len(lookat) != 3:
+            raise ValueError("camera.lookat_m must contain exactly three values")
+        distance = float(camera.get("distance_m", 17.0))
+        if distance <= 0.0:
+            raise ValueError("camera.distance_m must be positive")
+        return cls(
+            camera_lookat_m=lookat,  # type: ignore[arg-type]
+            camera_distance_m=distance,
+            camera_azimuth_deg=float(camera.get("azimuth_deg", 135.0)),
+            camera_elevation_deg=float(camera.get("elevation_deg", -22.0)),
+            show_left_ui=bool(display.get("show_left_ui", False)),
+            show_right_ui=bool(display.get("show_right_ui", True)),
+            show_axes=bool(display.get("show_axes", True)),
+            show_markers=bool(display.get("show_markers", True)),
+        )
+
+    def browser_camera_position_m(self) -> tuple[float, float, float]:
+        """Convert the MuJoCo orbit-camera settings to a Viser eye position."""
+
+        azimuth = np.deg2rad(self.camera_azimuth_deg)
+        elevation = np.deg2rad(self.camera_elevation_deg)
+        offset = self.camera_distance_m * np.array(
+            [
+                np.cos(elevation) * np.cos(azimuth),
+                np.cos(elevation) * np.sin(azimuth),
+                -np.sin(elevation),
+            ]
+        )
+        return tuple(np.asarray(self.camera_lookat_m) + offset)
 
 
 def _viewer_model() -> mujoco.MjModel:
@@ -54,7 +101,7 @@ class RescueViewer:
         config: ViewerConfig | None = None,
     ) -> None:
         self.simulator = simulator
-        self.config = config or ViewerConfig()
+        self.config = config or ViewerConfig.from_toml()
         self.model = _viewer_model()
         self.data = mujoco.MjData(self.model)
         self._handle: Any | None = None
