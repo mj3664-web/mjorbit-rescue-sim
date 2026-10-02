@@ -109,12 +109,39 @@ rescue-view --viewer-speed 2
 On Windows, launch it from Ubuntu under WSLg. If GLFW is missing, install the
 runtime package with `sudo apt install libglfw3`.
 
-## Send actions manually and read sensors
+## Send actions manually in the native MuJoCo viewer
+
+Launch native control mode:
+
+```bash
+rescue-control
+```
+
+Expand the viewer's right-side **Control** panel. It contains seven normalized
+sliders: `Fx`, `Fy`, `Fz`, `Tx`, `Ty`, `Tz`, and `capture_request`. Live phase,
+range, speed, distance, reward, and action telemetry is drawn inside the 3D
+scene. The additional derived values are also injected into the native MuJoCo
+sensor data.
+
+Keyboard controls:
+
+- `Space`: run or pause;
+- `N`: apply the current slider action for one control step;
+- `R`: reset the mission; and
+- `P`: print the complete named sensor packet in the terminal.
+
+Start running immediately or change the real-time factor with:
+
+```bash
+rescue-control --auto-run --speed 2
+```
+
+## Optional browser control station
 
 Launch the browser-based manual control station:
 
 ```bash
-rescue-control
+rescue-control-web
 ```
 
 Open `http://localhost:8080` if it does not open automatically. The control
@@ -140,12 +167,13 @@ edited copy without changing the package, pass it to either command:
 ```bash
 rescue-view --viewer-config my-viewer.toml
 rescue-control --viewer-config my-viewer.toml
+rescue-control-web --viewer-config my-viewer.toml
 ```
 
 Use a different port if 8080 is occupied:
 
 ```bash
-rescue-control --port 8090
+rescue-control-web --port 8090
 ```
 
 ## Run tests

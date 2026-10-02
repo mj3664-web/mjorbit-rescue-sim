@@ -37,3 +37,19 @@ def test_shared_viewer_configuration_loads_and_maps_browser_camera() -> None:
         np.linalg.norm(position - np.asarray(config.camera_lookat_m)),
         config.camera_distance_m,
     )
+
+
+def test_native_control_model_exposes_seven_actions_and_derived_sensors() -> None:
+    model = _viewer_model(control_mode=True)
+
+    assert model.nu == 7
+    assert model.actuator("capture_request").id == 6
+    for name in (
+        "mission_phase_code",
+        "probe_handle_range_m",
+        "relative_speed_m_s",
+        "distance_to_spacecraft_m",
+        "last_reward",
+        "capture_attempts",
+    ):
+        assert model.sensor(name).id >= 0

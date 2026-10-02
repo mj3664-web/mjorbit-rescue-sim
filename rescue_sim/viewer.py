@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from types import TracebackType
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable, Mapping, Sequence
 from xml.etree import ElementTree
 import tomllib
 
@@ -75,7 +75,17 @@ class ViewerConfig:
         return tuple(np.asarray(self.camera_lookat_m) + offset)
 
 
-def _viewer_model() -> mujoco.MjModel:
+_MANUAL_SENSOR_NAMES = (
+    "mission_phase_code",
+    "probe_handle_range_m",
+    "relative_speed_m_s",
+    "distance_to_spacecraft_m",
+    "last_reward",
+    "capture_attempts",
+)
+
+
+def _viewer_model(*, control_mode: bool = False) -> mujoco.MjModel:
     """Compile a display-only copy of the rescue MJCF.
 
     Standard MuJoCo does not know mjorbit's custom top-level element, so it is
@@ -88,6 +98,31 @@ def _viewer_model() -> mujoco.MjModel:
     extension = root.find("mjorbit")
     if extension is not None:
         root.remove(extension)
+    if control_mode:
+        actuator = root.find("actuator")
+        if actuator is None:
+            raise RuntimeError("viewer model has no actuator section")
+        for element in actuator:
+            element.set("ctrlrange", "-1 1")
+        ElementTree.SubElement(
+            actuator,
+            "motor",
+            {
+                "name": "capture_request",
+                "joint": "rescuer_free",
+                "gear": "0 0 0 0 0 0",
+                "ctrlrange": "-1 1",
+            },
+        )
+        sensor = root.find("sensor")
+        if sensor is None:
+            raise RuntimeError("viewer model has no sensor section")
+        for name in _MANUAL_SENSOR_NAMES:
+            ElementTree.SubElement(
+                sensor,
+                "user",
+                {"name": name, "dim": "1", "needstage": "pos"},
+            )
     xml = ElementTree.tostring(root, encoding="unicode")
     return mujoco.MjModel.from_xml_string(xml)
 
@@ -99,10 +134,15 @@ class RescueViewer:
         self,
         simulator: RescueSimulator,
         config: ViewerConfig | None = None,
+        *,
+        control_mode: bool = False,
+        key_callback: Callable[[int], None] | None = None,
     ) -> None:
         self.simulator = simulator
         self.config = config or ViewerConfig.from_toml()
-        self.model = _viewer_model()
+        self.control_mode = control_mode
+        self.key_callback = key_callback
+        self.model = _viewer_model(control_mode=control_mode)
         self.data = mujoco.MjData(self.model)
         self._handle: Any | None = None
         self._phase = ""
@@ -112,6 +152,7 @@ class RescueViewer:
             self._handle = mujoco.viewer.launch_passive(
                 self.model,
                 self.data,
+                key_callback=self.key_callback,
                 show_left_ui=self.config.show_left_ui,
                 show_right_ui=self.config.show_right_ui,
             )
@@ -158,8 +199,51 @@ class RescueViewer:
             self.data.time = float(state["time_s"])
             mujoco.mj_forward(self.model, self.data)
             self._set_phase_appearance(str(state["mission_phase"]))
+            if self.control_mode:
+                self._write_manual_sensor_values()
         self._handle.sync()
         return True
+
+    def control_action(self) -> np.ndarray:
+        """Read the seven normalized sliders from a manual-control viewer."""
+
+        if not self.control_mode or self.data.ctrl.shape != (7,):
+            raise RuntimeError("viewer was not created in control mode")
+        if self._handle is None:
+            return np.asarray(self.data.ctrl).copy()
+        with self._handle.lock():
+            return np.asarray(self.data.ctrl).copy()
+
+    def set_overlay_lines(self, lines: Sequence[str]) -> None:
+        """Show short live telemetry labels inside the native 3D scene."""
+
+        if self._handle is None:
+            return
+        positions = (
+            np.array([4.0, 0.0, 3.0]),
+            np.array([4.0, 0.0, 2.5]),
+            np.array([4.0, 0.0, 2.0]),
+        )
+        colors = (
+            np.array([0.25, 1.0, 0.45, 1.0], dtype=np.float32),
+            np.array([0.3, 0.85, 1.0, 1.0], dtype=np.float32),
+            np.array([1.0, 0.8, 0.25, 1.0], dtype=np.float32),
+        )
+        with self._handle.lock():
+            scene = self._handle.user_scn
+            count = min(len(lines), len(positions), scene.maxgeom)
+            scene.ngeom = count
+            for index in range(count):
+                geom = scene.geoms[index]
+                mujoco.mjv_initGeom(
+                    geom,
+                    mujoco.mjtGeom.mjGEOM_LABEL,
+                    np.array([0.18, 0.18, 0.18]),
+                    positions[index],
+                    np.eye(3).reshape(-1),
+                    colors[index],
+                )
+                geom.label = str(lines[index])[:99]
 
     def close(self) -> None:
         if self._handle is not None:
@@ -179,3 +263,29 @@ class RescueViewer:
         else:
             self.model.site_rgba[probe_id] = (0.2, 0.9, 1.0, 1.0)
         self._phase = phase
+
+    def _write_manual_sensor_values(self) -> None:
+        sensors = self.simulator.observe()
+        reward = getattr(self, "last_reward", np.nan)
+        values: Mapping[str, float] = {
+            "mission_phase_code": float(
+                {"approach": 0, "captured": 1, "complete": 2}[
+                    str(sensors["mission_phase"])
+                ]
+            ),
+            "probe_handle_range_m": float(sensors["probe_handle_range_m"]),
+            "relative_speed_m_s": float(
+                np.linalg.norm(sensors["relative_velocity_world_m_s"])
+            ),
+            "distance_to_spacecraft_m": float(
+                sensors["distance_to_spacecraft_m"]
+            ),
+            "last_reward": float(reward),
+            "capture_attempts": float(sensors["capture_attempts"]),
+        }
+        for name, value in values.items():
+            sensor_id = mujoco.mj_name2id(
+                self.model, mujoco.mjtObj.mjOBJ_SENSOR, name
+            )
+            address = int(self.model.sensor_adr[sensor_id])
+            self.data.sensordata[address] = value
