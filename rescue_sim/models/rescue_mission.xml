@@ -4,6 +4,19 @@
     <flag contact="disable"/>
   </option>
 
+  <visual>
+    <global azimuth="135" elevation="-22"/>
+    <headlight ambient="0.25 0.25 0.3" diffuse="0.8 0.8 0.8" specular="0.3 0.3 0.3"/>
+    <rgba haze="0.015 0.02 0.05 1"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.015 0.025 0.07"
+             rgb2="0 0 0" width="512" height="3072"/>
+    <material name="spacecraft_metal" rgba="0.55 0.60 0.68 1" shininess="0.6"/>
+    <material name="solar_panel" rgba="0.04 0.12 0.32 1" shininess="0.9"/>
+  </asset>
+
   <default>
     <geom contype="0" conaffinity="0"/>
   </default>
@@ -11,7 +24,21 @@
   <worldbody>
     <!-- The spacecraft is the mjorbit chief.  The port is a non-dynamic marker
          at the local-world origin. -->
-    <site name="spacecraft_port" pos="0 0 0" size="0.15" rgba="0.2 0.8 1 1"/>
+    <light name="sun" pos="3 -6 8" dir="-0.2 0.4 -1" directional="true"/>
+    <body name="spacecraft" pos="-1.5 0 0">
+      <geom name="spacecraft_bus" type="box" pos="-0.65 0 0"
+            size="0.65 0.75 0.65" material="spacecraft_metal"/>
+      <geom name="left_solar_panel" type="box" pos="-0.65 1.75 0"
+            size="0.06 1.0 0.48" material="solar_panel"/>
+      <geom name="right_solar_panel" type="box" pos="-0.65 -1.75 0"
+            size="0.06 1.0 0.48" material="solar_panel"/>
+      <geom name="docking_tunnel" type="cylinder" pos="1.05 0 0"
+            size="0.38 0.45" quat="0.7071068 0 0.7071068 0"
+            material="spacecraft_metal"/>
+      <site name="spacecraft_port" pos="1.5 0 0" type="cylinder"
+            size="0.28 0.035" quat="0.7071068 0 0.7071068 0"
+            rgba="0.2 0.8 1 1"/>
+    </body>
 
     <body name="rescuer" pos="0 0 0">
       <freejoint name="rescuer_free"/>
@@ -92,4 +119,3 @@
   <mjorbit use_j2="false" use_drag="false" use_srp="false" use_magnetic="false"
            use_gravity_gradient="true"/>
 </mujoco>
-

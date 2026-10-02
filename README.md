@@ -84,6 +84,31 @@ The included proportional-derivative controller reads only the returned sensor
 packet and generates actions through the public interface. It is a demonstration
 agent, not intended as a flight controller.
 
+## Open the interactive viewer
+
+Run the same mission in MuJoCo's interactive viewer:
+
+```bash
+rescue-view
+```
+
+or:
+
+```bash
+python -m rescue_sim.demo --viewer
+```
+
+The visualizer mirrors the mjorbit state into a display-only MuJoCo model; it
+does not replace or modify the orbital simulation. The default playback rate is
+4x. Use `--viewer-speed 1` for real time or another positive multiplier:
+
+```bash
+rescue-view --viewer-speed 2
+```
+
+On Windows, launch it from Ubuntu under WSLg. If GLFW is missing, install the
+runtime package with `sudo apt install libglfw3`.
+
 ## Run tests
 
 ```bash
@@ -113,4 +138,3 @@ Recommended next additions are:
 5. camera/range sensor occlusion and latency;
 6. an MPPI baseline; and
 7. a batched `mjorbit_warp` environment for PPO.
-

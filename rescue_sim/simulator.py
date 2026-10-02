@@ -133,6 +133,22 @@ class RescueSimulator:
             "capture_threshold": 0.5,
         }
 
+    @property
+    def render_state(self) -> Mapping[str, Any]:
+        """Return a copy of the MuJoCo state needed by visualization clients.
+
+        The simulator deliberately keeps the native mjorbit model and data
+        handles private.  A viewer can mirror these arrays into a standard
+        MuJoCo model without being able to mutate the mission dynamics.
+        """
+
+        return {
+            "time_s": self.time_s,
+            "qpos": np.asarray(self._data.qpos).copy(),
+            "qvel": np.asarray(self._data.qvel).copy(),
+            "mission_phase": self._phase.value,
+        }
+
     def reset(
         self,
         *,

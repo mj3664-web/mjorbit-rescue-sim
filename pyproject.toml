@@ -18,6 +18,7 @@ test = ["pytest>=8"]
 
 [project.scripts]
 rescue-demo = "rescue_sim.demo:main"
+rescue-view = "rescue_sim.visualize:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["rescue_sim"]
